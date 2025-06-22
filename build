@@ -1,0 +1,138 @@
+#!/bin/bash
+
+## --- CONFIG --- ##
+
+SRC_PATHS=("./src" "./vendor")
+INCLUDE_PATHS=("/usr/include" "_SCRIPT_DIR_/src" "_SCRIPT_DIR_/vendor")
+LINK_PATHS=("/usr/lib")
+BIN_FILE="./bin/mesa-demo"
+CUSTOM_ARGS="-std=c++20"
+COMPILER="clang++"
+PREBUILD_COMMS=()
+POSTBUILD_COMMS=()
+
+LOG_FILE=".build.log"
+
+## --- FUNCITONS --- ##
+function yes_or_no {
+    while true; do
+        read -p "$* [y/n]: " yn
+        case $yn in
+            [Yy]*) return 0  ;;  
+            [Nn]*) echo "Aborted" ; return  1 ;;
+        esac
+    done
+}
+
+## --- RUN IF NO CHANGES -- ##
+echo "Generating source hash..."
+
+if [[ $(type -p sha256sum) && $1 != "-f" ]]; then
+    _ALL_SOURCE_PATHS=""
+    for path in "${SRC_PATHS[@]}"; do
+        _ALL_SOURCE_PATHS="$path $_ALL_SOURCE_PATHS"
+    done
+    echo $_ALL_SOURCE_PATHS
+
+    THIS_HASH="$(find $_ALL_SOURCE_PATHS -type f -exec sha256sum {} \; | sha256sum)"
+    LAST_HASH="$(head -n 1 $LOG_FILE)"
+
+    if [[ $THIS_HASH == $LAST_HASH && $1 != "-f" && -f "$BUILD_FILE" ]]; then
+        echo "No changes detected. Running last build."
+        [ -f "$BIN_FILE" ] && exec "$BIN_FILE"
+        exit
+    fi
+
+    # update log file
+    echo "$THIS_HASH" > $LOG_FILE
+fi
+
+## --- BUILD --- ##
+SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+
+# Prebuild commands
+echo "PREBUILD: {"
+for comm in "${PREBUILD_COMMS[@]}"; do
+    eval "$comm"
+done
+echo "}"
+
+
+# Get all the cpp files in the source directory
+echo "Gathering source files..."
+SRC_FILES=""
+for path in "${SRC_PATHS[@]}"; do
+    echo "==> Checking \"$path\""
+    SRC_FILES="$SRC_FILES $(find $path -type f \( -iname \*.cpp -o -iname \*.c \) | tr '\n' ' ')"
+done
+# Resolve relative paths
+SRC_FILES=$(echo $SRC_FILES | sed "s#_SCRIPT_DIR_#$SCRIPT_DIR#g")
+
+# Put together include and lib directories
+echo "Gathering includes..."
+INCLUDES=""
+for path in "${INCLUDE_PATHS[@]}"; do
+    echo "==> Including \"$path\""
+    INCLUDES="$INCLUDES -I$path"
+done
+# Resolve relative paths
+INCLUDES=$(echo $INCLUDES | sed "s#_SCRIPT_DIR_#$SCRIPT_DIR#g")
+
+echo "Gathering links..."
+LINKS=""
+for path in "${LINK_PATHS[@]}"; do
+    echo "==> Linking \"$path\""
+    LINKS="$LINKS -L$path"
+done
+# Resolve relative paths
+LINKS=$(echo $LINKS | sed "s#_SCRIPT_DIR_#$SCRIPT_DIR#g")
+
+# Custom args
+# Resolve relative paths
+CUSTOM_ARGS=$(echo $CUSTOM_ARGS | sed "s#_SCRIPT_DIR_#$SCRIPT_DIR#g")
+
+# write a new ".clangd" file for lsp
+LSP_FILE=".clangd"
+echo "CompileFlags:" > $LSP_FILE
+echo "    Compiler: $COMPILER" >> $LSP_FILE
+echo "    Add: [ $(echo $INCLUDES $LINKS $CUSTOM_ARGS | sed 's/\(\w\) /\1, /g') ]" \
+    >> $LSP_FILE
+
+
+# Start the build
+echo "Starting build..."
+
+BIN_FILE=$(echo $BIN_FILE | sed "s#_SCRIPT_DIR_#$SCRIPT_DIR#g")
+if [ ! -d "$(dirname $BIN_FILE)" ]; then
+    mkdir "$(dirname $BIN_FILE)"
+fi
+
+BUILD_CMD="$COMPILER $SRC_FILES -o $BIN_FILE $INCLUDES $LINKS $CUSTOM_ARGS"
+# log the build command for debug
+echo "$BUILD_CMD" >> $LOG_FILE
+# finally run it
+eval "$BUILD_CMD"
+
+## --- RUN --- ##
+# Check that clang compiled successfully
+SUCCESS=$?
+if [ $SUCCESS == '0' ]; then
+    echo "----- BUILD SUCCESS -----"
+
+    # Postbuild commands
+    echo "POSTBUILD: {"
+    for comm in "${POSTBUILD_COMMS[@]}"; do
+        eval "$comm"
+    done
+    echo "}"
+
+    echo -e "Running application...\n"
+    # Success!, run the newly built file
+    [ -f "$BIN_FILE" ] && exec "$BIN_FILE"
+else
+    echo "----- BUILD FAILURE -----"
+    # Build failed. Ask the user if they want to run the last build anyway
+    [ -f "$BIN_FILE" ] && yes_or_no \
+        "Do you want to run last build anyway?" && \
+        (echo -e "\n"; exec "$BIN_FILE")
+fi
