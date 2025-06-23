@@ -4,5 +4,4 @@
 int main()
 {
     ezlog::Logger::LogINFO("Woah!");
-    asdf;
 }

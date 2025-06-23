@@ -4,7 +4,8 @@
 
 namespace mesa
 {   // constructor
-    NeuralNet::NeuralNet(const std::vector<uint32_t>& layout)
+    NeuralNet::NeuralNet(const std::vector<LayerSettings>& layout, NeuralNetSettings settings)
+        : m_Settings(settings)
     {   // verify size
         ezlog::Logger::ASSERT(layout.size() >= 2, "Neural network cannot be constructed with less than 2 layers.");
 
@@ -12,13 +13,14 @@ namespace mesa
         {   // layer
             m_Layers.emplace_back();
             Layer& layer = m_Layers[i - 1];
-            layer.neurons.reserve(layout[i]);
-            for (uint32_t n = 0; n < layer.neurons.capacity(); n++)
+            layer.Neurons.reserve(layout[i].Count);
+            for (uint32_t n = 0; n < layer.Neurons.capacity(); n++)
             {   // neuron
-                layer.neurons.emplace_back();
-                Neuron& neuron = layer.neurons[n];
+                layer.Neurons.emplace_back();
+                Neuron& neuron = layer.Neurons[n];
+                neuron.TransferType = layout[i].Type;
                 // weights
-                neuron.Weights.reserve(layout[i - 1]);
+                neuron.Weights.reserve(layout[i - 1].Count);
                 for (uint32_t w = 0; w < neuron.Weights.capacity(); w++) {
                     neuron.Weights.push_back(NeuralNet::RandomWeight());
                 }
@@ -27,13 +29,27 @@ namespace mesa
     }
 
     // public methods
-    void NeuralNet::Propagate(const std::vector<double>& inputs)
+    std::vector<double> NeuralNet::Propagate(const std::vector<double>& inputs)
     {
-        sadf
+        std::vector<double> lastLayer = inputs;
+        for (Layer& layer : m_Layers)
+        {
+            std::vector<double> thisLayer;
+            thisLayer.reserve(layer.Neurons.size());
+            for (Neuron& neuron : layer.Neurons)
+            {
+                neuron.Calculate(lastLayer);
+                thisLayer.emplace_back(neuron.Value);
+            }
+            lastLayer = thisLayer;
+        }
+        return lastLayer;
     }
 
     void NeuralNet::BackwardPropagate(const std::vector<double>& target)
-    {}
+    {
+        // TODO: Write this..
+    }
 
     // static methods
     double NeuralNet::RandomWeight()
