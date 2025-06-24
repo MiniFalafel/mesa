@@ -7,15 +7,20 @@ namespace mesa
 {
     // methods
     double Neuron::Calculate(const std::vector<double>& inputs)
-    {   // dot product of inputs and weights
+    {   // bias + dot product of inputs and weights
         ezlog::Logger::ASSERT(inputs.size() == Weights.size(), "inputs and weights are not of same size!");
-        Value = 0.0;
+        Value = Bias;
         for (uint32_t i = 0; i < Weights.size(); i++)
             Value += Weights[i] * inputs[i];
         // transfer function
         Value = Neuron::Transfer(TransferType, Value);
 
         return Value;
+    }
+
+    double Neuron::Derivative() const
+    {
+        return Neuron::d_Transfer(TransferType, Value);
     }
 
     // static methods

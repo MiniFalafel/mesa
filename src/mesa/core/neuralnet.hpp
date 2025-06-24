@@ -16,7 +16,7 @@ namespace mesa
     struct LayerSettings
     {
         uint32_t Count;
-        NeuronTransfer Type;
+        NeuronTransfer Type = NeuronTransfer::SIGMOID;
     };
 
     // neural net
@@ -36,8 +36,10 @@ namespace mesa
 
         std::vector<double> Propagate(const std::vector<double>& inputs);
         void BackwardPropagate(const std::vector<double>& target);
+        void UpdateWeights(const std::vector<double>& inputs);
 
     private:
+        // static
         static double RandomWeight();
     };
 }
