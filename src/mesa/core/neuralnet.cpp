@@ -52,17 +52,15 @@ namespace mesa
         ezlog::Logger::ASSERT(target.size() == m_Layers[m_Layers.size() - 1].Neurons.size(),
                 "BACKPROPAGATION: target and output layer sizes do not match!");
         // loop backwards through layers
-        for (uint32_t i = m_Layers.size() - 1; i > 0; i--) // excluding input layer
+        for (int i = m_Layers.size() - 1; i >= 0; i--) // excluding input layer
         {
             for (uint32_t n = 0; n < m_Layers[i].Neurons.size(); n++)
             {
                 Neuron& neuron = m_Layers[i].Neurons[n];
                 double error = 0.0;
                 if (i == m_Layers.size() - 1) {
-                    ezlog::Logger::LogINFO(std::format("T: {}, A: {}", target[n], neuron.Value));
                     error = target[n] - neuron.Value;
-                    error = error * error; // MSE
-                    ezlog::Logger::LogINFO(std::format("ERROR: {}", error));
+                    //error = error * error; // MSE
                 }
                 else
                 {   // accumulate from next layer

@@ -27,7 +27,6 @@ int main()
     mesa::NeuralNet network(layout, { 0.5 });
 
     // check output
-    const uint32_t iters = 5000;
     std::vector<std::vector<double>> t_ins = {
         {0, 0}, {1, 0}, {1, 1}, {0, 1}
     };
@@ -43,6 +42,7 @@ int main()
     }
 
     // train
+    const uint32_t iters = 5000;
     for (uint32_t i = 0; i < iters; i++)
     {   // choose a random training option
         uint32_t trainIndex = rand() % t_ins.size();
