@@ -37,7 +37,7 @@ if [[ $(type -p sha256sum) && $1 != "-f" ]]; then
     THIS_HASH="$(find $_ALL_SOURCE_PATHS -type f -exec sha256sum {} \; | sha256sum)"
     LAST_HASH="$(head -n 1 $LOG_FILE)"
 
-    if [[ $THIS_HASH == $LAST_HASH && $1 != "-f" && -f "$BUILD_FILE" ]]; then
+    if [[ $THIS_HASH == $LAST_HASH && $1 != "-f" && -f "$BIN_FILE" ]]; then
         echo "No changes detected. Running last build."
         [ -f "$BIN_FILE" ] && exec "$BIN_FILE"
         exit
