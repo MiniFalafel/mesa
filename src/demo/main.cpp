@@ -1,10 +1,8 @@
 #include "mesa/core/neuralnet.hpp"
-#include "mesa/core/neuron.hpp"
 #include <mesa/mesa.hpp>
 #include <util/ezlog.hpp>
 
 #include <iostream>
-#include <format>
 
 void displayVec(const char* label, std::vector<double> vec)
 {
